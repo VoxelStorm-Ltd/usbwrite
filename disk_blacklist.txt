@@ -1,3 +1,4 @@
+# list devices here that should never be operated on
 sda
 sda0
 sda1

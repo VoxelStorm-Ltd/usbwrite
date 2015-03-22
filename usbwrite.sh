@@ -4,7 +4,7 @@
 # set time and date with
 #touch -c -t 201503211337.00 $(find "$sourcetree")
 
-#diskblacklistfile="disk_blacklist.txt"
+diskblacklistfile="disk_blacklist.txt"
 
 searchdevice="$1"
 sourcetree="$2"
@@ -34,6 +34,10 @@ while true; do
   done
   device=${deviceline%% *}
   echo "New FAT32 device found: $device size $(echo "$deviceline" | tr -s ' ' | cut -d ' ' -f 5)"
+  if grep -q "^$device$" "$diskblacklistfile"; then
+    echo "$device matches a blacklisted device in $diskblacklistfile - aborting!"
+    break
+  fi
   mounted=$(mount | fgrep "$device")
   if [ "$mounted" != "" ]; then
     echo "Device is mounted, unmounting..."
