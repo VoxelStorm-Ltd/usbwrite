@@ -8,7 +8,7 @@ diskblacklistfile="disk_blacklist.txt"
 
 searchdevice="$1"
 sourcetree="$2"
-mountpoint="./mnt/"
+mountpoint="./mnt"
 mkdir -p "$mountpoint"
 
 if [ "$searchdevice" = "" ] || [ "$sourcetree" = "" ]; then
@@ -46,11 +46,18 @@ while true; do
   #mountpoint=$(echo "$deviceline | cut -d ' ' 3)
   echo "Mounting at $mountpoint..."
   mount "$device" "$mountpoint"
+
   echo "Copying data..."
-  rsync -a --info=progress2 "$tree" mnt/
+  rsync -a --info=progress2 "$tree" "$mountpoint"
+
+  echo "Updating templated files..."
+  echo "$key_game" > "$mountpoint/Game Download Key.txt"
+  echo "$key_ost" > "$mountpoint/Soundtrack Download Key.txt"
+
   echo "Applying label..."
   # TODO
-  echo "Setting modified times..."
+
+  echo "Setting modified times to $(stat "$sourcetree" | grep ^Modify | cut -d ' ' -f 2-3)..."
   OLDIFS="$IFS"
   IFS=$'\n'
   for file in $(find "$mountpoint"); do
@@ -58,9 +65,11 @@ while true; do
     echo "$file"; touch -c -r "$sourcetree" "$file"
   done
   IFS="$OLDIFS"
-  echo "Synchronosing buffers..."
+
+  echo "Synchronosing buffers and unmounting..."
   sync
   umount "$device"
+
   echo "Device ready to remove."
   while true; do
     # wait for device to be removed
