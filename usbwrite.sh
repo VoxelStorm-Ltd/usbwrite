@@ -95,7 +95,9 @@ while [ "$count" -lt "$maxcount" ]; do
   mount "$device" "$mountpoint"
 
   echo "Copying data..."
-  rsync -rt --info=progress2 --delete "$sourcedir" "$mountpoint"
+  #rsync -rt -c --info=progress2 --delete "$sourcedir" "$mountpoint"
+  # faster but potentially inaccurate:
+  rsync -rt --size-only --info=progress2 --delete "$sourcedir" "$mountpoint"
 
   echo "Updating templated files..."
   for templatefile in $templatefilelist; do
@@ -105,13 +107,13 @@ while [ "$count" -lt "$maxcount" ]; do
     cp "$templatedir/$templatefile" "$tempfile"
     for templateentry in $templateentrylist; do
       # escapes for replace from http://stackoverflow.com/a/2705678/1678468
-      templateentryline=$(tail -n +$count "$templateentry" | head -1 | sed -e 's/[\/&]/\\&/g')
+      templateentryline=$(tail -n +$count "$templatedir/$templateentry" | head -1 | sed -e 's/[\/&]/\\&/g')
       templateentryescaped=$(echo "$templateentry" | sed -e 's/[]\/$*.^|[]/\\&/g')
-      sed -e 's/\[\['"$templateentryescaped"'\]\]/'"$templateentryline"'/g' "$tempfile"
+      sed -i -e 's/\[\['"$templateentryescaped"'\]\]/'"$templateentryline"'/g' "$tempfile"
     done
-    echo "DEBUG ##################"
+    echo "DEBUG TEMPLATE BEGIN ############ $templatefile"
     cat "$tempfile"
-    echo "DEBUG END ##############"
+    echo "DEBUG TEMPLATE END ############## $templatefile"
     mv "$tempfile" "$destinationfile"
   done
 
@@ -138,12 +140,11 @@ while [ "$count" -lt "$maxcount" ]; do
   echo "Ready to remove USB device $count."
   while true; do
     # wait for device to be removed
-    deviceline=$(fdisk -l "$searchdevice" | grep "^/dev/" | fgrep "FAT32")
+    deviceline=$(fdisk -l "$searchdevice" | grep "^/dev/" | fgrep "FAT32" 2>/dev/null)
     if [ "$deviceline" = "" ]; then
       break
     fi
     echo -n $'\a'
     sleep 1
   done
-  exit
 done
