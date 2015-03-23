@@ -11,6 +11,7 @@ searchdevice="$2"
 sourcedir="$3"
 templatedir="$4"
 label="$5"
+count="$6"
 mountpoint="./mnt"
 mkdir -p "$mountpoint"
 
@@ -18,8 +19,8 @@ if [ "$maxcount" = "" ] || \
    [ "$searchdevice" = "" ] || \
    [ "$sourcedir" = "" ] || \
    [ "$templatedir" = "" ]; then
-  echo "Usage: $0 count targetdevice sourcedir templatedir [volumelabel]"
-  echo "  i.e. $0 21 /dev/sdb ./source ./templates AdvertCity"
+  echo "Usage: $0 count targetdevice sourcedir templatedir [volumelabel] [startcount]"
+  echo "  i.e. $0 21 /dev/sdb ./source ./templates AdvertCity 1"
   exit 1
 fi
 
@@ -60,10 +61,11 @@ for templateentry in $templateentrylist; do
   fi
 done
 
-count=0
+if [ "$count" = "" ]; then
+  count=1
+fi
 
 while [ "$count" -lt "$maxcount" ]; do
-  ((count++))
   #dmesg | fgrep sd | fgrep 'Attached SCSI removable disk'
   echo "Waiting for USB drive $count..."
   deviceline=""
@@ -71,7 +73,7 @@ while [ "$count" -lt "$maxcount" ]; do
   while true; do
     # loop until we get a device or told to cancel
     #deviceline=$(mount | fgrep /dev/sd | fgrep vfat)
-    deviceline=$(fdisk -l "$searchdevice" | grep "^/dev/" | fgrep "FAT32")
+    deviceline=$(fdisk -l "$searchdevice" | grep "^/dev/" | fgrep "FAT32" 2>/dev/null)
     if [ "$deviceline" != "" ]; then
       break
     fi
@@ -147,4 +149,5 @@ while [ "$count" -lt "$maxcount" ]; do
     echo -n $'\a'
     sleep 1
   done
+  ((count++))
 done
