@@ -6,15 +6,20 @@
 
 diskblacklistfile="disk_blacklist.txt"
 
-searchdevice="$1"
-sourcedir="$2"
-templatedir="$3"
+maxcount="$1"
+searchdevice="$2"
+sourcedir="$3"
+templatedir="$4"
+label="$5"
 mountpoint="./mnt"
 mkdir -p "$mountpoint"
 
-if [ "$searchdevice" = "" ] || [ "$sourcedir" = "" ] || [ "$templatedir" = "" ]; then
-  echo "Usage: $0 targetdevice sourcedir templatedir"
-  echo "  i.e. $0 /dev/sdb ./source ./templates"
+if [ "$maxcount" = "" ] || \
+   [ "$searchdevice" = "" ] || \
+   [ "$sourcedir" = "" ] || \
+   [ "$templatedir" = "" ]; then
+  echo "Usage: $0 count targetdevice sourcedir templatedir [volumelabel]"
+  echo "  i.e. $0 21 /dev/sdb ./source ./templates AdvertCity"
   exit 1
 fi
 
@@ -34,23 +39,30 @@ templateentrycount=$(echo "$templateentrylist" | wc -l)
 echo "  $templateentrycount unique template sources."
 for templateentry in $templateentrylist; do
   templateentryfile="$templatedir/$templateentry"
-  echo "Checking $templateentryfile"
+  echo -n "Checking $templateentryfile: "
   if ! [ -f "$templateentryfile" ]; then
     referencedlocations=$(
       for templatefile in $templatefilelist; do
         fgrep -Hn "[[$templateentry]]" "$templatedir/$templatefile"
       done
     )
-    echo "ERROR: could not find template source file $templateentry"
+    echo
+    echo "ERROR: could not find template source file $templateentryfile"
     echo "  referenced in:"
     echo "$referencedlocations" | sed 's/^/    /;s/:/\n      line /;s/:/:\n        /'
+    exit 1
+  fi
+  templateentryfilelinecount=$(cat "$templateentryfile" | wc -l)
+  echo "$templateentryfilelinecount entries"
+  if [ "$templateentryfilelinecount" -lt "$maxcount" ]; then
+    echo "ERROR: $templateentryfile has fewer entries than the number of drives expected to write!"
     exit 1
   fi
 done
 
 count=0
 
-while true; do
+while [ "$count" -lt "$maxcount" ]; do
   ((count++))
   #dmesg | fgrep sd | fgrep 'Attached SCSI removable disk'
   echo "Waiting for USB drive $count..."
@@ -67,37 +79,55 @@ while true; do
     sleep 1
   done
   device=${deviceline%% *}
-  echo "New FAT32 device found: $device size $(echo "$deviceline" | tr -s ' ' | cut -d ' ' -f 5)"
+  echo "New FAT32 device found: $device"
+  dosfsck -a "$device"
+  echo "Device size $(echo "$deviceline" | tr -s ' ' | cut -d ' ' -f 5) label \"$(dosfslabel "$device")\""
   if grep -q "^$device$" "$diskblacklistfile"; then
     echo "$device matches a blacklisted device in $diskblacklistfile - aborting!"
     break
   fi
   mounted=$(mount | fgrep "$device")
   if [ "$mounted" != "" ]; then
-    echo "Device is mounted, unmounting..."
-    umount "$device"
+    echo "Device is mounted at $(echo "$mounted" | cut -d ' ' -f 3), unmounting..."
+    umount "$device" || (echo "ERROR: unable to unmount $device! Aborting for safety."; exit 1)
   fi
-  #mountpoint=$(echo "$deviceline | cut -d ' ' 3)
-  echo "Mounting at $mountpoint..."
+  echo "Mounting device at $mountpoint..."
   mount "$device" "$mountpoint"
 
   echo "Copying data..."
-  rsync -a --info=progress2 "$tree" "$mountpoint"
+  rsync -a --info=progress2 --delete "$tree" "$mountpoint"
 
   echo "Updating templated files..."
-  
-  #echo "$key_game" > "$mountpoint/Game Download Key.txt"
-  #echo "$key_ost" > "$mountpoint/Soundtrack Download Key.txt"
+  for templatefile in $templatefilelist; do
+    # we want to minimise writes to the destination, so modify the temp file and then write it when done
+    destinationfile="$mountpoint/$(echo "$templatefile" | sed 's/.template$//')"
+    tempfile=$(mktemp)
+    cp "$templatedir/$templatefile" "$tempfile"
+    for templateentry in $templateentrylist; do
+      # escapes for replace from http://stackoverflow.com/a/2705678/1678468
+      templateentryline=$(tail -n +$count "$templateentry" | head -1 | sed -e 's/[\/&]/\\&/g')
+      templateentryescaped=$(echo "$templateentry" | sed -e 's/[]\/$*.^|[]/\\&/g')
+      sed -e 's/\[\['"$templateentryescaped"'\]\]/'"$templateentryline"'/g' "$tempfile"
+    done
+    echo "DEBUG ##################"
+    cat "$tempfile"
+    echo "DEBUG END ##############"
+    mv "$tempfile" "$destinationfile"
+  done
 
-  echo "Applying label..."
-  # TODO
+  if [ "$label" != "" ]; then
+    echo "Applying label \"$label\"..."
+    dosfslabel "$device" "$label"
+  fi
+  echo "Label for $device is $(dosfslabel "$device")"
 
   echo "Setting modified times to $(stat "$sourcedir" | grep ^Modify | cut -d ' ' -f 2-3)..."
   OLDIFS="$IFS"
   IFS=$'\n'
   for file in $(find "$mountpoint"); do
-    #echo "$file"; touch -c -t 201503211337.00 "$file"
-    echo "$file"; touch -c -r "$sourcedir" "$file"
+    #echo "$file"
+    #touch -c -t 201503211337.00 "$file"
+    touch -c -r "$sourcedir" "$file"
   done
   IFS="$OLDIFS"
 
