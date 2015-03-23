@@ -120,9 +120,9 @@ while [ "$count" -lt "$maxcount" ]; do
       templateentryescaped=$(echo "$templateentry" | sed -e 's/[]\/$*.^|[]/\\&/g')
       sed -i -e 's/\[\['"$templateentryescaped"'\]\]/'"$templateentryline"'/g' "$tempfile"
     done
-    echo "DEBUG TEMPLATE BEGIN ############ $templatefile"
-    cat "$tempfile"
-    echo "DEBUG TEMPLATE END ############## $templatefile"
+    #echo "DEBUG TEMPLATE BEGIN ############ $templatefile"
+    #cat "$tempfile"
+    #echo "DEBUG TEMPLATE END ############## $templatefile"
     mv "$tempfile" "$destinationfile"
   done
 
