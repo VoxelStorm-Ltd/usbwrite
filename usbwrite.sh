@@ -126,12 +126,6 @@ while [ "$count" -lt "$maxcount" ]; do
     mv "$tempfile" "$destinationfile"
   done
 
-  if [ "$label" != "" ]; then
-    echo "Applying label \"$label\"..."
-    dosfslabel "$device" "$label"
-  fi
-  echo "Label for $device is $(dosfslabel "$device")"
-
   echo "Setting modified times to $(stat "$sourcedir" | grep ^Modify | cut -d ' ' -f 2-3)..."
   OLDIFS="$IFS"
   IFS=$'\n'
@@ -145,6 +139,12 @@ while [ "$count" -lt "$maxcount" ]; do
   echo "Synchronosing buffers and unmounting..."
   sync
   umount "$device"
+
+  if [ "$label" != "" ]; then
+    echo "Applying label \"$label\"..."
+    dosfslabel "$device" "$label"
+  fi
+  echo "Label for $device is $(dosfslabel "$device")"
 
   echo "Ready to remove USB device $count."
   while true; do
