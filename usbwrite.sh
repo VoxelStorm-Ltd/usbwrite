@@ -26,6 +26,10 @@ fi
 
 echo "Verifying templated files in $templatedir..."
 pushd "$templatedir" >/dev/null
+if [ "$?" != "0" ]; then
+  echo "ERROR: could not visit template directory $templatedir"
+  exit 1
+fi
 IFS=$'\n'
 templatefilelist=$(find | grep ".template$")
 templatelistcount=$(echo "$templatefilelist" | wc -l)
@@ -73,7 +77,7 @@ while [ "$count" -lt "$maxcount" ]; do
   while true; do
     # loop until we get a device or told to cancel
     #deviceline=$(mount | fgrep /dev/sd | fgrep vfat)
-    deviceline=$(fdisk -l "$searchdevice" | grep "^/dev/" | fgrep "FAT32" 2>/dev/null)
+    deviceline=$(fdisk -l "$searchdevice" 2>/dev/null | grep "^/dev/" | fgrep "FAT32")
     if [ "$deviceline" != "" ]; then
       break
     fi
@@ -91,7 +95,10 @@ while [ "$count" -lt "$maxcount" ]; do
   mounted=$(mount | fgrep "$device")
   if [ "$mounted" != "" ]; then
     echo "Device is mounted at $(echo "$mounted" | cut -d ' ' -f 3), unmounting..."
-    umount "$device" || (echo "ERROR: unable to unmount $device! Aborting for safety."; exit 1)
+    if ! umount "$device"; then
+      echo "ERROR: unable to unmount $device! Aborting for safety."
+      exit 1
+    fi
   fi
   echo "Mounting device at $mountpoint..."
   mount "$device" "$mountpoint"
@@ -142,7 +149,7 @@ while [ "$count" -lt "$maxcount" ]; do
   echo "Ready to remove USB device $count."
   while true; do
     # wait for device to be removed
-    deviceline=$(fdisk -l "$searchdevice" | grep "^/dev/" | fgrep "FAT32" 2>/dev/null)
+    deviceline=$(fdisk -l "$searchdevice" 2>/dev/null | grep "^/dev/" | fgrep "FAT32")
     if [ "$deviceline" = "" ]; then
       break
     fi
