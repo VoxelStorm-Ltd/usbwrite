@@ -2,7 +2,7 @@
 # Clone an existing directory and contents to a number of USB drives, with file contents specified by lists
 
 # set time and date with
-#touch -c -t 201503211337.00 $(find "$sourcetree")
+# IFS=$'\n' bash -c 'touch -c -t 201503251337.00 $(find "./tree/")'
 
 diskblacklistfile="disk_blacklist.txt"
 
@@ -17,9 +17,12 @@ if [ "$searchdevice" = "" ] || [ "$sourcetree" = "" ]; then
   exit 1
 fi
 
+count=0
+
 while true; do
+  ((count++))
   #dmesg | fgrep sd | fgrep 'Attached SCSI removable disk'
-  echo "Waiting for new USB drive"
+  echo "Waiting for USB drive $count..."
   deviceline=""
   #tail -f templog -n0 | 'fgrep' --line-buffered sd | 'fgrep' --line-buffered "Attached SCSI removable disk" | read -r -s -n 30 templine
   while true; do
@@ -70,7 +73,7 @@ while true; do
   sync
   umount "$device"
 
-  echo "Device ready to remove."
+  echo "Ready to remove USB device $count."
   while true; do
     # wait for device to be removed
     deviceline=$(fdisk -l "$searchdevice" | grep "^/dev/" | fgrep "FAT32")
