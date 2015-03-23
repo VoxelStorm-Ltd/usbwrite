@@ -95,7 +95,8 @@ while [ "$count" -lt "$maxcount" ]; do
   mount "$device" "$mountpoint"
 
   echo "Copying data..."
-  rsync -a --info=progress2 --delete "$tree" "$mountpoint"
+  rsync -a --info=progress2 --delete "$sourcedir" "$mountpoint"
+  exit
 
   echo "Updating templated files..."
   for templatefile in $templatefilelist; do
