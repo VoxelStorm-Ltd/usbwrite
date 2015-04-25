@@ -12,7 +12,7 @@ sourcedir="$3"
 templatedir="$4"
 label="$5"
 count="$6"
-mountpoint="./mnt"
+mountpoint=$(mktemp -d -p ./)
 mkdir -p "$mountpoint"
 
 if [ "$maxcount" = "" ] || \
@@ -143,7 +143,7 @@ while [ "$count" -lt "$maxcount" ]; do
   IFS="$OLDIFS"
 
   echo "Synchronosing buffers and unmounting..."
-  sync
+  #sync
   umount "$device"
 
   echo "Ready to remove USB device $count."
@@ -158,3 +158,5 @@ while [ "$count" -lt "$maxcount" ]; do
   done
   ((count++))
 done
+
+rm -r "$mountpoint"
