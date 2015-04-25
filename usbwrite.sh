@@ -13,6 +13,11 @@ templatedir="$4"
 label="$5"
 count="$6"
 mountpoint=$(mktemp -d -p ./)
+if [ "$mountpoint" = "" ] || [ "$mountpoint" = "/" ]; then
+  echo "Oh shit!  Not going to mount that there!"
+  exit 1
+fi
+
 mkdir -p "$mountpoint"
 
 if [ "$maxcount" = "" ] || \
