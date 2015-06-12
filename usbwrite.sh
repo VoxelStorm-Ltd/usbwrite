@@ -111,7 +111,7 @@ while [ "$count" -lt "$maxcount" ]; do
   echo "Copying data..."
   #rsync -rt -c --info=progress2 --delete "$sourcedir" "$mountpoint"
   # faster but potentially inaccurate:
-  rsync -rt --size-only --info=progress2 --delete "$sourcedir" "$mountpoint"
+  rsync -rt --size-only --info=progress2 --delete "$sourcedir"/ "$mountpoint"
 
   echo "Updating templated files..."
   for templatefile in $templatefilelist; do
