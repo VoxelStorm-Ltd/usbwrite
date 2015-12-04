@@ -100,6 +100,7 @@ while [ "$count" -lt "$maxcount" ]; do
   mounted=$(mount | fgrep "$device")
   if [ "$mounted" != "" ]; then
     echo "Device is mounted at $(echo "$mounted" | cut -d ' ' -f 3), unmounting..."
+    sleep 2
     if ! umount "$device"; then
       echo "ERROR: unable to unmount $device! Aborting for safety."
       exit 1
@@ -107,6 +108,7 @@ while [ "$count" -lt "$maxcount" ]; do
   fi
   echo "Mounting device at $mountpoint..."
   mount "$device" "$mountpoint"
+  #mount "$device" "$mountpoint" -o sync
 
   echo "Copying data..."
   #rsync -rt -c --info=progress2 --delete "$sourcedir" "$mountpoint"
@@ -149,7 +151,7 @@ while [ "$count" -lt "$maxcount" ]; do
 
   echo "Synchronosing buffers and unmounting..."
   #sync
-  umount "$device"
+  umount -v "$device"
 
   echo "Ready to remove USB device $count."
   while true; do
