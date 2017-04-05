@@ -12,13 +12,11 @@ sourcedir="$3"
 templatedir="$4"
 label="$5"
 count="$6"
-mountpoint=$(mktemp -d -p ./)
-if [ "$mountpoint" = "" ] || [ "$mountpoint" = "/" ]; then
-  echo "Oh shit!  Not going to mount that there!"
+
+if [ "$(whoami)" != "root" ]; then
+  echo "You'll need to be root for this to work."
   exit 1
 fi
-
-mkdir -p "$mountpoint"
 
 if [ "$maxcount" = "" ] || \
    [ "$searchdevice" = "" ] || \
@@ -29,10 +27,19 @@ if [ "$maxcount" = "" ] || \
   exit 1
 fi
 
+mountpoint=$(mktemp -d -p ./)
+if [ "$mountpoint" = "" ] || [ "$mountpoint" = "/" ]; then
+  echo "Oh shit!  Not going to mount that there!"
+  exit 1
+fi
+
+mkdir -p "$mountpoint"
+
 echo "Verifying templated files in $templatedir..."
 pushd "$templatedir" >/dev/null
 if [ "$?" != "0" ]; then
   echo "ERROR: could not visit template directory $templatedir"
+  rm -r "$mountpoint"
   exit 1
 fi
 IFS=$'\n'
@@ -60,12 +67,14 @@ for templateentry in $templateentrylist; do
     echo "ERROR: could not find template source file $templateentryfile"
     echo "  referenced in:"
     echo "$referencedlocations" | sed 's/^/    /;s/:/\n      line /;s/:/:\n        /'
+    rm -r "$mountpoint"
     exit 1
   fi
   templateentryfilelinecount=$(cat "$templateentryfile" | wc -l)
   echo "$templateentryfilelinecount entries"
   if [ "$templateentryfilelinecount" -lt "$maxcount" ]; then
     echo "ERROR: $templateentryfile has fewer entries than the number of drives expected to write!"
+    rm -r "$mountpoint"
     exit 1
   fi
 done
@@ -76,7 +85,7 @@ fi
 
 while [ "$count" -lt "$maxcount" ]; do
   #dmesg | fgrep sd | fgrep 'Attached SCSI removable disk'
-  echo "Waiting for USB drive $count..."
+  echo "Waiting for USB drive $count on $searchdevice..."
   deviceline=""
   #tail -f templog -n0 | 'fgrep' --line-buffered sd | 'fgrep' --line-buffered "Attached SCSI removable disk" | read -r -s -n 30 templine
   while true; do
@@ -103,6 +112,7 @@ while [ "$count" -lt "$maxcount" ]; do
     sleep 2
     if ! umount "$device"; then
       echo "ERROR: unable to unmount $device! Aborting for safety."
+      rm -r "$mountpoint"
       exit 1
     fi
   fi
@@ -154,6 +164,8 @@ while [ "$count" -lt "$maxcount" ]; do
   umount -v "$device"
 
   echo "Ready to remove USB device $count."
+  # the mountpoint is removed here to allow clean exit if we ctrl-c below
+  rm -r "$mountpoint"
   while true; do
     # wait for device to be removed
     deviceline=$(fdisk -l "$searchdevice" 2>/dev/null | grep "^/dev/" | fgrep "FAT32")
@@ -164,6 +176,7 @@ while [ "$count" -lt "$maxcount" ]; do
     sleep 1
   done
   ((count++))
+  mkdir -p "$mountpoint"
 done
 
 rm -r "$mountpoint"
