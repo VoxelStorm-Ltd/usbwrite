@@ -33,7 +33,7 @@ if [ "$mountpoint" = "" ] || [ "$mountpoint" = "/" ]; then
   exit 1
 fi
 
-mkdir -p "$mountpoint"
+#mkdir -p "$mountpoint"
 
 echo "Verifying templated files in $templatedir..."
 pushd "$templatedir" >/dev/null
@@ -44,16 +44,28 @@ if [ "$?" != "0" ]; then
 fi
 IFS=$'\n'
 templatefilelist=$(find | grep ".template$")
-templatelistcount=$(echo "$templatefilelist" | wc -l)
-echo "  $templatelistcount templated files found."
+if [ -z "$templatefilelist" ]; then
+  templatelistcount=0
+  echo "  No templated files found."
+else
+  templatelistcount=$(echo "$templatefilelist" | wc -l)
+  echo "  $templatelistcount templated files found."
+fi
 popd >/dev/null
 templateentrylist=$(
   for templatefile in $templatefilelist; do
     grep -o -P "\[\[.*?\]\]" "$templatedir/$templatefile"
   done | sort | uniq | sed 's/^\[\[//;s/\]\]$//'
 )
-templateentrycount=$(echo "$templateentrylist" | wc -l)
-echo "  $templateentrycount unique template sources."
+if [ -z "$templateentrylist" ]; then
+  templateentrycount=0
+  if [ ! -z "$templatefilelist" ]; then
+    echo "  No templated entries found in the templates - you probably don't want to use templates in this case."
+  fi
+else
+  templateentrycount=$(echo "$templateentrylist" | wc -l)
+  echo "  $templateentrycount unique template sources."
+fi
 for templateentry in $templateentrylist; do
   templateentryfile="$templatedir/$templateentry"
   echo -n "Checking $templateentryfile: "
@@ -80,7 +92,7 @@ for templateentry in $templateentrylist; do
 done
 
 if [ "$count" = "" ]; then
-  count=1
+  count=0
 fi
 
 while [ "$count" -lt "$maxcount" ]; do
@@ -119,6 +131,11 @@ while [ "$count" -lt "$maxcount" ]; do
   echo "Mounting device at $mountpoint..."
   mount "$device" "$mountpoint"
   #mount "$device" "$mountpoint" -o sync
+  if [ "$?" != 0 ]; then
+    echo "Something went wrong mounting the drive - abandoning this attempt before we write to the wrong place!"
+    umount "$mountpoint" && rm -r "$mountpoint"
+    exit 1
+  fi
 
   echo "Copying data..."
   #rsync -rt -c --info=progress2 --delete "$sourcedir" "$mountpoint"
@@ -162,6 +179,11 @@ while [ "$count" -lt "$maxcount" ]; do
   echo "Synchronosing buffers and unmounting..."
   #sync
   umount -v "$device"
+  while [ "$?" != "0" ]; do
+    echo "Failed to unmount, waiting and retrying..."
+    sleep 5
+    umount -v "$device"
+  done
 
   echo "Ready to remove USB device $count."
   # the mountpoint is removed here to allow clean exit if we ctrl-c below
