@@ -120,7 +120,7 @@ while [ "$count" -lt "$maxcount" ]; do
   fi
   mounted=$(mount | fgrep "$device")
   if [ "$mounted" != "" ]; then
-    echo "Device is mounted at $(echo "$mounted" | cut -d ' ' -f 3), unmounting..."
+    echo "Device is mounted at $(echo "$mounted" | cut -d ' ' -f 3- | sed 's/ type .*$//'), unmounting..."
     sleep 2
     if ! umount "$device"; then
       echo "ERROR: unable to unmount $device! Aborting for safety."
