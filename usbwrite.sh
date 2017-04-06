@@ -113,7 +113,7 @@ while [ "$count" -lt "$maxcount" ]; do
   device=${deviceline%% *}
   echo "New FAT32 device found: $device"
   dosfsck -a "$device"
-  echo "Device size $(echo "$deviceline" | tr -s ' ' | cut -d ' ' -f 5) label \"$(dosfslabel "$device")\""
+  echo "Device size $(echo "$deviceline" | tr -s ' ' | cut -d ' ' -f 5) label \"$(dosfslabel "$device" | tail -1)\""
   if grep -q "^$device$" "$diskblacklistfile"; then
     echo "$device matches a blacklisted device in $diskblacklistfile - aborting!"
     break
