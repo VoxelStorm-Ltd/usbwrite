@@ -1,5 +1,5 @@
 # USBWrite
-Utility script for batch writing USB drives with templated content.  Created for VoxelStorm's [sphereFACE game distribution on USB](https://www.kickstarter.com/projects/voxelstorm/sphereface/posts/1821110)
+Utility script for batch writing USB drives with templated content on Linux.  Created for VoxelStorm's [sphereFACE game distribution on USB](https://www.kickstarter.com/projects/voxelstorm/sphereface/posts/1821110).
 
 The primary use case is mass-producing almost identical USB drives, with content delivered from a templated directory, but with some personalised variations - for instance, a different product key included on each drive.
 
